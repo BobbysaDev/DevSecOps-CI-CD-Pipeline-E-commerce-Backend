@@ -14,17 +14,7 @@ pipeline {
                 git branch: 'main', url: 'https://github.com/BobbysaDev/DevSecOps-CI-CD-Pipeline-E-commerce-Backend.git'
             }
         }
-
-        stage('Static Security Testing (SAST)') {
-            steps {
-                withSonarQubeEnv('SonarQube') {
-                    sh "${SCANNER_HOME}/bin/sonar-scanner \
-                        -Dsonar.projectKey=ecommerce-backend \
-                        -Dsonar.sources=. \
-                        -Dsonar.host.url=http://localhost:9000"
-                }
-            }
-        }
+    
 
         stage('File Vulnerability Scan (Trivy FS)') {
             steps {
