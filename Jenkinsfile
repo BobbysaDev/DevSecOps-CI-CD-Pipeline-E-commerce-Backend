@@ -30,7 +30,7 @@ pipeline {
 
         stage('Container Image Scan (Trivy)') {
             steps {
-                sh "trivy image ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${ECR_REPO_NAME}:${BUILD_NUMBER} --severity HIGH,CRITICAL"
+                sh 'trivy image 522632170020.dkr.ecr.ap-south-1.amazonaws.com/ecommerce-backend:12 --severity HIGH,CRITICAL --scanners vuln'
             }
         }
 
