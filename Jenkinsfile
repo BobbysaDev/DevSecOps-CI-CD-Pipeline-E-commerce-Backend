@@ -1,0 +1,81 @@
+pipeline {
+    agent any
+
+    environment {
+        AWS_ACCOUNT_ID = '522632170020'
+        AWS_REGION = 'ap-south-1'
+        ECR_REPO_NAME = 'ecommerce-backend'
+        SCANNER_HOME = tool 'SonarScanner'
+    }
+
+    stages {
+        stage('Checkout') {
+            steps {
+                git branch: 'main', url: 'https://github.com/YOUR_USERNAME/YOUR_REPO.git'
+            }
+        }
+
+        stage('Static Security Testing (SAST)') {
+            steps {
+                withSonarQubeEnv('SonarQube') {
+                    sh "${SCANNER_HOME}/bin/sonar-scanner \
+                        -Dsonar.projectKey=ecommerce-backend \
+                        -Dsonar.sources=. \
+                        -Dsonar.host.url=http://localhost:9000"
+                }
+            }
+        }
+
+        stage('File Vulnerability Scan (Trivy FS)') {
+            steps {
+                sh 'trivy fs . --severity HIGH,CRITICAL'
+            }
+        }
+
+        stage('Build Docker Image') {
+            steps {
+                sh "docker build -t ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${ECR_REPO_NAME}:${BUILD_NUMBER} ."
+            }
+        }
+
+        stage('Container Image Scan (Trivy)') {
+            steps {
+                sh "trivy image ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${ECR_REPO_NAME}:${BUILD_NUMBER} --severity HIGH,CRITICAL"
+            }
+        }
+
+        stage('Push to AWS ECR') {
+            steps {
+                sh "aws ecr get-login-password --region ${AWS_REGION} | docker login --username AWS --password-stdin ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com"
+                sh "docker push ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${ECR_REPO_NAME}:${BUILD_NUMBER}"
+            }
+        }
+
+        stage('Deploy to EKS') {
+            steps {
+                script {
+                    sh "sed -i 's|IMAGE_TAG|${BUILD_NUMBER}|g' k8s/deployment.yaml"
+                    sh "kubectl apply -f k8s/deployment.yaml"
+                    sh "kubectl apply -f k8s/service.yaml"
+                }
+            }
+        }
+
+        stage('Dynamic Security Testing (DAST)') {
+            steps {
+                script {
+                    // Placeholder for OWASP ZAP scan
+                    // In a real scenario, you'd wait for the LB URL and run zap-baseline.py
+                    echo "Running OWASP ZAP Baseline Scan..."
+                    sh "docker run --rm -t owasp/zap2docker-stable zap-baseline.py -t http://YOUR_APP_LB_URL"
+                }
+            }
+        }
+    }
+
+    post {
+        always {
+            cleanWs()
+        }
+    }
+}

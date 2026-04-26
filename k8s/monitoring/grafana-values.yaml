@@ -1,0 +1,21 @@
+# Grafana Helm Values
+service:
+  type: LoadBalancer
+
+adminPassword: admin
+
+# Enable persistence if needed
+persistence:
+  enabled: true
+  size: 10Gi
+
+# Datasources can be pre-configured to point to Prometheus
+datasources:
+  datasources.yaml:
+    apiVersion: 1
+    datasources:
+    - name: Prometheus
+      type: prometheus
+      url: http://prometheus-server
+      access: proxy
+      isDefault: true

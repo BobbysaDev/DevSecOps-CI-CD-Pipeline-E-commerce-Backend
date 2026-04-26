@@ -1,0 +1,75 @@
+---
+- name: Install DevSecOps Tools
+  hosts: all
+  become: yes
+  tasks:
+    - name: Update apt and install dependencies
+      apt:
+        update_cache: yes
+        name:
+          - apt-transport-https
+          - ca-certificates
+          - curl
+          - gnupg
+          - lsb-release
+          - openjdk-11-jdk
+        state: present
+
+    - name: Install Jenkins
+      block:
+        - name: Add Jenkins key
+          apt_key:
+            url: https://pkg.jenkins.io/debian-stable/jenkins.io-2023.key
+            state: present
+        - name: Add Jenkins repo
+          apt_repository:
+            repo: deb https://pkg.jenkins.io/debian-stable binary/
+            state: present
+        - name: Install Jenkins
+          apt:
+            name: jenkins
+            state: present
+        - name: Start Jenkins
+          service:
+            name: jenkins
+            state: started
+            enabled: yes
+
+    - name: Install Docker
+      block:
+        - name: Add Docker GPG key
+          apt_key:
+            url: https://download.docker.com/linux/ubuntu/gpg
+            state: present
+        - name: Add Docker repository
+          apt_repository:
+            repo: deb [arch=amd64] https://download.docker.com/linux/ubuntu {{ ansible_distribution_release }} stable
+            state: present
+        - name: Install Docker Engine
+          apt:
+            name:
+              - docker-ce
+              - docker-ce-cli
+              - containerd.io
+            state: present
+        - name: Add user to docker group
+          user:
+            name: ubuntu
+            groups: docker
+            append: yes
+
+    - name: Install Trivy
+      shell: |
+        wget -qO - https://aquasecurity.github.io/trivy-repo/deb/public.key | gpg --dearmor | sudo tee /usr/share/keyrings/trivy.gpg > /dev/null
+        echo "deb [signed-by=/usr/share/keyrings/trivy.gpg] https://aquasecurity.github.io/trivy-repo/deb {{ ansible_distribution_release }} main" | sudo tee -a /etc/apt/sources.list.d/trivy.list
+        sudo apt-get update
+        sudo apt-get install trivy -y
+
+    - name: Run SonarQube as Docker container
+      docker_container:
+        name: sonarqube
+        image: sonarqube:lts-community
+        state: started
+        restart_policy: always
+        ports:
+          - "9000:9000"
