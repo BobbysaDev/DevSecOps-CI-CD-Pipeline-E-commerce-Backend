@@ -30,7 +30,9 @@ pipeline {
 
         stage('Container Image Scan (Trivy)') {
             steps {
+                retry(2) {  
                 sh 'trivy image 522632170020.dkr.ecr.ap-south-1.amazonaws.com/ecommerce-backend:13 --severity HIGH,CRITICAL --scanners vuln --timeout 10m'
+                }
             }
         }
 
