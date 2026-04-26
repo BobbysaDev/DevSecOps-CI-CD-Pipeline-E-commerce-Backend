@@ -36,17 +36,21 @@ pipeline {
         }
 
         stage('Push to AWS ECR') {
-            environment {
-                AWS_ACCESS_KEY_ID = credentials('aws-access-key')
-                AWS_SECRET_ACCESS_KEY = credentials('aws-secret-key')
-            }
             steps {
-                sh '''
-                aws ecr get-login-password --region ap-south-1 | \
-                docker login --username AWS --password-stdin 522632170020.dkr.ecr.ap-south-1.amazonaws.com
+                withCredentials([
+                    string(credentialsId: 'aws-access-key', variable: 'AWS_ACCESS_KEY_ID'),
+                    string(credentialsId: 'aws-secret-key', variable: 'AWS_SECRET_ACCESS_KEY')
+                ]) {
+                    sh '''
+                    export AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID
+                    export AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY
 
-                docker push 522632170020.dkr.ecr.ap-south-1.amazonaws.com/ecommerce-backend:${BUILD_NUMBER}
-                '''
+                    aws ecr get-login-password --region ap-south-1 | \
+                    docker login --username AWS --password-stdin 522632170020.dkr.ecr.ap-south-1.amazonaws.com
+
+                    docker push 522632170020.dkr.ecr.ap-south-1.amazonaws.com/ecommerce-backend:${BUILD_NUMBER}
+                    '''
+                }
             }
         }
     }
